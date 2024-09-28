@@ -3,14 +3,16 @@
 #include <time.h>
 #include "stack.h"
 
-typedef double elm_t;
+
+typedef int elm_t;
 
 void set_stderr (const char* file_name);
 
 class timer_cl
 {
-    long int mark = 0;
-    bool started = false;
+    private:
+        long int mark = 0;
+        bool started = false;
     public:
         void start()
         {
@@ -35,27 +37,25 @@ int main()
     set_stderr("err_log.txt");
 
     stack_t stk = {};
-    stack_ctor(&stk, sizeof(elm_t), 10);
+    stack_ctor(&stk, sizeof(elm_t), 3);
 
-    const size_t n_elms = 1e5;
-    elm_t x = 0;
+    const size_t n_elms = 1e7;
+    elm_t x = -5;
 
-    for (; x < n_elms; x++)
+    for (size_t i = 0; i < n_elms; i++, x++)
     {
         stack_push(&stk, &x);
-        stack_assert(&stk, "main:!1"); // !1
     }
 
     for (size_t j = 0; j < n_elms; j++)
     {
         stack_pop(&stk, &x);
-        stack_assert(&stk, "main:!2"); // !2
     }
-
-    stack_assert(&stk, "main:!3"); // !3
-    stack_dtor(&stk);
-
     timer.end();
+
+    _STACK_ASSERT_(&stk)
+    stack_dump(&stk, _POS_);
+    stack_dtor(&stk);
 
     return 0;
 }

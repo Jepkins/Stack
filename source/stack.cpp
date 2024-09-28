@@ -1,28 +1,39 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <math.h>
 #include <assert.h>
 #include "stack.h"
 
 static const size_t CAP_MULTIPLICATOR = 2;  // >= 2 !!!
-static const size_t EXPONENTIAL_LIMIT = 1e4;
-static const size_t MAX_CAP = 1e5;
+static const size_t EXPONENTIAL_LIMIT = 1e6;
+static const size_t MAX_CAP = 1e8;
+static const size_t DUMP_MAX_DATA = 1e3;
 
 #define CHECK_ERR(stk) {if(stack_err(stk)) return;}
+
+typedef enum {
+    EXPAND = 0,
+    SHRINK = 1
+} Cap_modification;
 
 static void stack_ifneed_resize (stack_t* stk, Cap_modification mode);
 
 void stack_ctor (stack_t* stk, size_t elm_width, size_t base_capacity)
 {
+    assert(stk);
+
     stack_dtor(stk);
 
-    stk->size          = 0;
+    stk->elm_width     = elm_width;
     stk->base_capacity = base_capacity;
     stk->capacity      = base_capacity;
-    stk->elm_width     = elm_width;
+    stk->size          = 0;
     stk->err           = OK;
 
     stk->data = calloc(base_capacity, elm_width);
+
+    _STACK_ASSERT_(stk)
 }
 
 void stack_dtor (stack_t* stk)
@@ -45,11 +56,6 @@ stack_err_t stack_err (stack_t* stk)
     if (stk->err)
         return stk->err;
 
-    if (!stk->data)
-    {
-        stk->err = DATA_NULL;
-        return DATA_NULL;
-    }
     if (!stk->elm_width)
     {
         stk->err = ELM_WIDTH_NULL;
@@ -60,6 +66,11 @@ stack_err_t stack_err (stack_t* stk)
         stk->err = BASE_CAP_NULL;
         return BASE_CAP_NULL;
     }
+    if (!stk->data)
+    {
+        stk->err = DATA_NULL;
+        return DATA_NULL;
+    }
     if (!stk->capacity)
     {
         stk->err = CAP_NULL;
@@ -67,24 +78,24 @@ stack_err_t stack_err (stack_t* stk)
     }
     if (stk->size > stk->capacity)
     {
-        stk->err = OVERFLOW;
-        return OVERFLOW;
+        stk->err = STACK_OVERFLOW;
+        return STACK_OVERFLOW;
     }
 
     return OK;
 }
 
-void stack_assert(stack_t* stk, const char* pos)
+void stack_assert (stack_t* stk, Code_position pos)
 {
     stack_err_t err = stack_err(stk);
     if (err)
     {
         fprintf(stderr,
-            "\nSTACK_ASSERT (called from %s):\n"
+            "STACK_ASSERT (called from %s:%d in function %s):\n"
             "Assertion failed: err code = %d\n",
-            pos, err
+            pos.file, pos.line, pos.func, err
         );
-        stack_dump(stk, "stack_assert");
+        stack_dump(stk, _POS_);
 
         stack_dtor(stk);
 
@@ -92,15 +103,18 @@ void stack_assert(stack_t* stk, const char* pos)
     }
 }
 
-void stack_dump(stack_t* stk, const char* pos)
+void stack_dump(stack_t* stk, Code_position pos)
 {
-    fprintf(stderr, "\nSTACK_DUMP (called from %s):\n", pos);
+    stack_err(stk);
+    fprintf(stderr, "STACK_DUMP (called from %s:%d in function %s):\n", pos.file, pos.line, pos.func);
 
     if (!stk)
     {
         fprintf(stderr, "stk = nullptr!!!\n\n");
         return;
     }
+
+    fprintf(stderr, "stack_t <stk>[%p]:\n", stk);
 
     fprintf(stderr, "elements width = %lld\n", stk->elm_width);
     fprintf(stderr, "base capacity = %lld\n", stk->base_capacity);
@@ -114,16 +128,26 @@ void stack_dump(stack_t* stk, const char* pos)
         return;
     }
 
-    fprintf(stderr, "STACK BYTES: \n{\n");
-
-    for (size_t b = 0; b < stk->elm_width * stk->size;)
+    fprintf(stderr, "data[%p]: \n{\n", stk->data);
+    if (stk->elm_width && stk->size)
     {
-        fprintf(stderr, "\t| ");
-        for (size_t i = 0; b < stk->elm_width * stk->size && i < stk->elm_width; i++, b++)
+        size_t b = 0;
+        const size_t max_b = std::min(DUMP_MAX_DATA, stk->elm_width*std::min(stk->size, stk->capacity));
+        const int max_n_width = (int)ceil(log10((std::min(DUMP_MAX_DATA / stk->elm_width, stk->size))));
+
+        while (b < stk->elm_width * stk->size && b < DUMP_MAX_DATA)
         {
-            fprintf(stderr, "%.2X ", ((unsigned char*)stk->data)[b]);
+            fprintf(stderr, "\t[%.*lld] = | ", max_n_width, b / stk->elm_width);
+            for (size_t i = 0; b < stk->elm_width * stk->size && i < stk->elm_width; i++, b++)
+            {
+                fprintf(stderr, "%.2X ", ((unsigned char*)stk->data)[b]);
+            }
+            fprintf(stderr, "|\n");
         }
-        fprintf(stderr, "|\n");
+        if (b >= DUMP_MAX_DATA)
+        {
+            fprintf(stderr, "\t... (too many members)\n");
+        }
     }
 
     fprintf(stderr, "}\n\n");
@@ -131,7 +155,7 @@ void stack_dump(stack_t* stk, const char* pos)
 
 void stack_ifneed_resize (stack_t* stk, Cap_modification mode)
 {
-    CHECK_ERR(stk)
+    _STACK_ASSERT_(stk)
 
     if (stk->size < stk->base_capacity)
         return;
@@ -147,7 +171,8 @@ void stack_ifneed_resize (stack_t* stk, Cap_modification mode)
 
                 if (new_cap > MAX_CAP)
                 {
-                    stk->err = OVERFLOW;
+                    stk->err = TOO_BIG;
+                    _STACK_ASSERT_(stk)
                     return;
                 }
 
@@ -158,6 +183,7 @@ void stack_ifneed_resize (stack_t* stk, Cap_modification mode)
                 if (!new_ptr)
                 {
                     stk->err = REALLOC_NULL;
+                    _STACK_ASSERT_(stk)
                     return;
                 }
                 stk->data = new_ptr;
@@ -190,6 +216,7 @@ void stack_ifneed_resize (stack_t* stk, Cap_modification mode)
                 if (!new_ptr)
                 {
                     stk->err = REALLOC_NULL;
+                    _STACK_ASSERT_(stk)
                     return;
                 }
                 stk->data = new_ptr;
@@ -207,7 +234,7 @@ void stack_ifneed_resize (stack_t* stk, Cap_modification mode)
 void stack_push (stack_t* stk, void* value)
 {
     stack_ifneed_resize (stk, EXPAND);
-    CHECK_ERR(stk)
+    _STACK_ASSERT_(stk)
 
     memcpy((char*)stk->data + stk->size*stk->elm_width, value, stk->elm_width);
     stk->size++;
@@ -215,10 +242,11 @@ void stack_push (stack_t* stk, void* value)
 
 void stack_pop (stack_t* stk, void* dst)
 {
-    CHECK_ERR(stk)
+    _STACK_ASSERT_(stk)
     if (stk->size == 0)
     {
-        stk->err = POP_UNEXISTING;
+        stk->err = STACK_UNDERFLOW;
+        _STACK_ASSERT_(stk)
         return;
     }
 

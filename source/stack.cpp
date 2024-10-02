@@ -12,6 +12,32 @@ static const size_t DUMP_MAX_DATA = 1e3;
 
 #define CHECK_ERR(stk) {if(stack_err(stk)) return;}
 
+#ifdef DO_HASH
+static void save_stack_hash (stack_t* stk);
+static bool check_stack_hash (stack_t* stk);
+static bool check_data_hash (stack_t* stk);
+static void save_data_hash (stack_t* stk);
+
+static bool check_stack_hash (stack_t* stk)
+{
+    return stk->stack_hash == get_hash(stk, sizeof(stk->data) + sizeof(stk->size) + sizeof(stk->elm_width) +
+                                            sizeof(stk->base_capacity) + sizeof(stk->capacity) + sizeof(stk->err));
+}
+static bool check_data_hash (stack_t* stk)
+{
+    return stk->data_hash == get_hash(stk->data, stk->capacity);
+}
+
+static void save_stack_hash (stack_t* stk)
+{
+    stk->stack_hash = get_hash(stk, sizeof(stk->data) + sizeof(stk->size) + sizeof(stk->elm_width) + sizeof(stk->base_capacity) + sizeof(stk->capacity) + sizeof(stk->err));
+}
+static void save_data_hash (stack_t* stk)
+{
+    stk->data_hash = get_hash(stk->data, stk->capacity);
+}
+#endif
+
 typedef enum {
     EXPAND = 0,
     SHRINK = 1
@@ -33,7 +59,13 @@ void stack_ctor (stack_t* stk, size_t elm_width, size_t base_capacity)
 
     stk->data = calloc(base_capacity, elm_width);
 
+    IF_DO_HASH(save_stack_hash(stk); save_data_hash(stk);)
+
     _STACK_ASSERT_(stk)
+}
+void stack_ctor (stack_t* stk, size_t elm_width)
+{
+    stack_ctor(stk, elm_width, 2);
 }
 
 void stack_dtor (stack_t* stk)
@@ -53,8 +85,19 @@ stack_err_t stack_err (stack_t* stk)
     if (!stk)
         return STK_NULL;
 
-    if (stk->err)
-        return stk->err;
+    IF_DO_HASH
+    (
+        if(!check_stack_hash(stk))
+        {
+            stk->err = CORRUPT_STACK;
+            return CORRUPT_STACK;
+        }
+        if(!check_data_hash(stk))
+        {
+            stk->err = CORRUPT_DATA;
+            return CORRUPT_DATA;
+        }
+    )
 
     if (!stk->elm_width)
     {
@@ -90,6 +133,7 @@ void stack_assert (stack_t* stk, Code_position pos)
     stack_err_t err = stack_err(stk);
     if (err)
     {
+        printf("Assertion failed (see stderr for more info)\n");
         fprintf(stderr,
             "STACK_ASSERT (called from %s:%d in function %s):\n"
             "Assertion failed: err code = %d\n",
@@ -133,14 +177,15 @@ void stack_dump(stack_t* stk, Code_position pos)
     {
         size_t b = 0;
         const size_t max_b = std::min(DUMP_MAX_DATA, stk->elm_width*std::min(stk->size, stk->capacity));
-        const int max_n_width = (int)ceil(log10((std::min(DUMP_MAX_DATA / stk->elm_width, stk->size))));
+        const int max_n_width = (int)ceil(log10((std::min(DUMP_MAX_DATA / stk->elm_width, std::min(stk->size, stk->capacity)))));
 
-        while (b < stk->elm_width * stk->size && b < DUMP_MAX_DATA)
+        while (b < max_b)
         {
             fprintf(stderr, "\t[%.*lld] = | ", max_n_width, b / stk->elm_width);
-            for (size_t i = 0; b < stk->elm_width * stk->size && i < stk->elm_width; i++, b++)
+            for (size_t i = 0; i < stk->elm_width; i++, b++)
             {
-                fprintf(stderr, "%.2X ", ((unsigned char*)stk->data)[b]);
+                unsigned char byte = ((unsigned char*)stk->data)[b];
+                fprintf(stderr, "%.1X%.1X ", byte & 0x0f, (byte & 0xf0) >> 4);
             }
             fprintf(stderr, "|\n");
         }
@@ -173,7 +218,7 @@ void stack_ifneed_resize (stack_t* stk, Cap_modification mode)
                 {
                     stk->err = TOO_BIG;
                     _STACK_ASSERT_(stk)
-                    return;
+                    break;
                 }
 
                 stk->capacity = new_cap;
@@ -184,7 +229,7 @@ void stack_ifneed_resize (stack_t* stk, Cap_modification mode)
                 {
                     stk->err = REALLOC_NULL;
                     _STACK_ASSERT_(stk)
-                    return;
+                    break;
                 }
                 stk->data = new_ptr;
             }
@@ -217,7 +262,7 @@ void stack_ifneed_resize (stack_t* stk, Cap_modification mode)
                 {
                     stk->err = REALLOC_NULL;
                     _STACK_ASSERT_(stk)
-                    return;
+                    break;
                 }
                 stk->data = new_ptr;
             }
@@ -229,6 +274,7 @@ void stack_ifneed_resize (stack_t* stk, Cap_modification mode)
             assert(0 && "stack_resize(): Cap_modification mode = <wtf?>");
         }
     }
+    IF_DO_HASH(save_stack_hash(stk); save_data_hash(stk);)
 }
 
 void stack_push (stack_t* stk, void* value)
@@ -238,6 +284,8 @@ void stack_push (stack_t* stk, void* value)
 
     memcpy((char*)stk->data + stk->size*stk->elm_width, value, stk->elm_width);
     stk->size++;
+
+    IF_DO_HASH(save_stack_hash(stk); save_data_hash(stk);)
 }
 
 void stack_pop (stack_t* stk, void* dst)
@@ -252,6 +300,8 @@ void stack_pop (stack_t* stk, void* dst)
 
     memcpy(dst, (char*)stk->data + (stk->size - 1)*stk->elm_width, stk->elm_width);
     stk->size--;
+
+    IF_DO_HASH(save_stack_hash(stk); save_data_hash(stk);)
 
     stack_ifneed_resize (stk, SHRINK);
 }

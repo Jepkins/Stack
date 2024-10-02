@@ -1,10 +1,10 @@
 #include <stdio.h>
-#include <io.h>
+#include <unistd.h>
 #include <time.h>
 #include "stack.h"
 
 
-typedef int elm_t;
+typedef double elm_t;
 
 void set_stderr (const char* file_name);
 
@@ -37,17 +37,19 @@ int main()
     set_stderr("err_log.txt");
 
     stack_t stk = {};
-    stack_ctor(&stk, sizeof(elm_t), 3);
+    stack_ctor(&stk, sizeof(elm_t));
 
-    const size_t n_elms = 1e7;
-    elm_t x = -5;
+    const size_t n_elms = 1e4;
+    elm_t x = -16;
 
-    for (size_t i = 0; i < n_elms; i++, x++)
+    for (size_t i = 0; i < n_elms; i++, x+=16)
     {
+        if (i == 102)
+            memset(stk.data, 1, 100);
         stack_push(&stk, &x);
     }
 
-    for (size_t j = 0; j < n_elms; j++)
+    for (size_t j = 0; j < n_elms - 20; j++)
     {
         stack_pop(&stk, &x);
     }

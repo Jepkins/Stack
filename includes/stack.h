@@ -2,6 +2,7 @@
 #define STACK_H
 
 #include <cstddef>
+#include "protection.h"
 
 typedef struct {
     const char* file;
@@ -11,14 +12,22 @@ typedef struct {
 #define _POS_ {__FILE__, __LINE__, __func__}
 
 #ifdef DEBUG
+#define DO_HASH
+#define DO_CANARY
 #define _DBG(...) __VA_ARGS__
+#define IF_DO_CANARY(...) __VA_ARGS__
+#define IF_DO_HASH(...) __VA_ARGS__
 #define _STACK_ASSERT_(stk) {stack_assert(stk, _POS_);}
 #else
 #define _DBG(...)
+#define IF_DO_CANARY(...)
+#define IF_DO_HASH(...)
 #define _STACK_ASSERT_(stk)
 #endif
 
 typedef enum {
+    CORRUPT_DATA    = -2,
+    CORRUPT_STACK   = -1,
     OK              = 0,
     STK_NULL        = 1,
     ELM_WIDTH_NULL  = 2,
@@ -27,20 +36,25 @@ typedef enum {
     CAP_NULL        = 5,
     STACK_OVERFLOW  = 6, // COOL
     TOO_BIG         = 7,
-    STACK_UNDERFLOW = 8, // FUCK
+    STACK_UNDERFLOW = 8,
     REALLOC_NULL    = 9
 } stack_err_t;
 
 typedef struct {
-    void* data;
     size_t size;
     size_t base_capacity;
     size_t capacity;
     size_t elm_width;
+    void* data;
     stack_err_t err;
+#ifdef DO_HASH
+    uint64_t stack_hash;
+    uint64_t data_hash;
+#endif // DO_HASH
 } stack_t;
 
 void stack_ctor (stack_t* stk, size_t elm_width, size_t base_capacity);
+void stack_ctor (stack_t* stk, size_t elm_width);
 void stack_dtor (stack_t* stk);
 
 stack_err_t stack_err (stack_t* stk);

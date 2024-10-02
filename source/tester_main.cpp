@@ -45,7 +45,7 @@ int main()
     for (size_t i = 0; i < n_elms; i++, x+=16)
     {
         if (i == 102)
-            memset(stk.data, 1, 100);
+            memset((char*)stk.data, 1, stk.elm_width*stk.capacity + 5);
         stack_push(&stk, &x);
     }
 

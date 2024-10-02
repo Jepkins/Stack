@@ -11,6 +11,7 @@ typedef struct {
 } Code_position;
 #define _POS_ {__FILE__, __LINE__, __func__}
 
+#define NO_DATA_HASHING
 #ifdef DEBUG
 #define DO_HASH
 #define DO_CANARY
@@ -47,10 +48,14 @@ typedef struct {
     size_t elm_width;
     void* data;
     stack_err_t err;
-#ifdef DO_HASH
+
+IF_DO_HASH
+(
     uint64_t stack_hash;
-    uint64_t data_hash;
-#endif // DO_HASH
+    #ifndef NO_DATA_HASHING
+        uint64_t data_hash;
+    #endif // NO_DATA_HASHING
+)
 } stack_t;
 
 void stack_ctor (stack_t* stk, size_t elm_width, size_t base_capacity);

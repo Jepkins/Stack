@@ -1,13 +1,13 @@
-STACK_ASSERT (called from source/stack.cpp:264 in function stack_ifneed_resize):
+STACK_ASSERT (called from source/stack.cpp:234 in function stack_ifneed_resize):
 Assertion failed: err code = -2
-STACK_DUMP (called from source/stack.cpp:203 in function stack_assert):
-stack_t <stk>[0000000BE09FFC60]:
+STACK_DUMP (called from source/stack.cpp:173 in function stack_assert):
+stack_t <stk>[00000007253FF8D0]:
 elements width = 8
 base capacity = 2
 capacity = 128
 size = 102
 err code = -1
-data[00000166AF6AFA70]: 
+data[000001565BF2FA70]: 
 {
 	[000] = | 00 00 00 00 00 00 03 0C |
 	[001] = | 00 00 00 00 00 00 00 00 |
@@ -113,4 +113,4 @@ data[00000166AF6AFA70]:
 	[101] = | 10 00 00 00 00 00 99 04 |
 }
 
-Assertion failed: 0 && "STACK_ASSERT", file source/stack.cpp, line 207
+Assertion failed: 0 && "STACK_ASSERT", file source/stack.cpp, line 177

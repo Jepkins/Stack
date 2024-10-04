@@ -34,11 +34,10 @@ typedef enum {
     ELM_WIDTH_NULL  = 2,
     BASE_CAP_NULL   = 3,
     DATA_NULL       = 4,
-    CAP_NULL        = 5,
-    STACK_OVERFLOW  = 6, // COOL
-    TOO_BIG         = 7,
-    STACK_UNDERFLOW = 8,
-    REALLOC_NULL    = 9
+    STACK_OVERFLOW  = 5, // COOL
+    TOO_BIG         = 6,
+    STACK_UNDERFLOW = 7,
+    REALLOC_NULL    = 8
 } stack_err_t;
 
 typedef struct {

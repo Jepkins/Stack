@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-static const size_t CANARY_THICKNESS = 16; // :8 (optional)
+static const size_t CANARY_THICKNESS = 24; // :8 (slightly slows down otherwise)
 
 uint64_t get_hash(void* ptr, size_t len);
 

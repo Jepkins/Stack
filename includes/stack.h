@@ -11,20 +11,32 @@ typedef struct {
 } Code_position;
 #define _POS_ {__FILE__, __LINE__, __func__}
 
+#define DEBUG
+
+#ifdef NO_DATA_HASHING
+    #undef NO_DATA_HASHING
+#endif // NO_DATA_HASHING
 // #define NO_DATA_HASHING
+
 #ifdef DEBUG
-#define DO_HASH
-#define DO_CANARY
-#define _DBG(...) __VA_ARGS__
-#define IF_DO_CANARY(...) __VA_ARGS__
-#define IF_DO_HASH(...) __VA_ARGS__
-#define _STACK_ASSERT_(stk) {stack_assert(stk, _POS_);}
-#else
-#define _DBG(...)
-#define IF_DO_CANARY(...)
-#define IF_DO_HASH(...)
-#define _STACK_ASSERT_(stk)
-#endif
+    #define DO_HASH
+    #define DO_CANARY
+    #define _STACK_ASSERT_(stk) {stack_assert(stk, _POS_);}
+#else // notdef DEBUG
+    #define _STACK_ASSERT_(stk)
+#endif // DEBUG
+
+#ifdef DO_HASH
+    #define IF_DO_HASH(...) __VA_ARGS__
+#else // notdef DO_HASH
+    #define IF_DO_HASH(...)
+#endif // DO_HASH
+
+#ifdef DO_CANARY
+    #define IF_DO_CANARY(...) __VA_ARGS__
+#else // notdef DO_CANARY
+    #define IF_DO_CANARY(...)
+#endif // DO_CANARY
 
 typedef enum {
     CORRUPT_DATA    = -2,

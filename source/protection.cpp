@@ -2,10 +2,12 @@
 #include <string.h>
 #include "protection.h"
 
-static const uint64_t HWORD = (uint64_t)clock();
+static const uint64_t HWORD = 0xF00DBED;
 
-static uint64_t CANARY_VALUE = (uint64_t)clock();
+static uint64_t CANARY_VALUE = 0xBEDEDA;
 static const uint64_t CANARY_HASH  = get_hash(&CANARY_VALUE, sizeof(CANARY_VALUE));
+
+static uint64_t my64_scramble(uint64_t val);
 
 uint64_t get_hash(void* ptr, size_t len)
 {
@@ -15,9 +17,18 @@ uint64_t get_hash(void* ptr, size_t len)
     for (size_t i = 0; i < len; i++)
     {
         hash = 31*hash + byte_ptr[i];
+        hash = my64_scramble(hash);
     }
     hash = hash ^ HWORD;
+    hash = my64_scramble(hash);
     return hash;
+}
+
+static uint64_t my64_scramble(uint64_t val)
+{
+    uint64_t ret = ((val >> 12) ^ HWORD) | (val << 20);
+    ret ^= (ret >> 15) | (ret << 17);
+    return ret;
 }
 
 void place_canary (void* dst)

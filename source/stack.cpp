@@ -7,38 +7,67 @@
 #include "stack.h"
 
 static const size_t CAP_MULTIPLICATOR = 2;  // >= 2 !!!
-static const size_t EXPONENTIAL_LIMIT = 1e6;
-static const size_t MAX_CAP = 1e8;
+static const size_t EXPONENTIAL_LIMIT = 1e4;
+static const size_t MAX_CAP = 1e5;
 static const size_t DUMP_MAX_DATA = 1e3;
 
 #define CHECK_ERR(stk) {if(stack_err(stk)) return;}
 
 #ifdef DO_HASH
+static uint64_t get_stack_hash (stack_t* stk);
 static void save_stack_hash (stack_t* stk);
 static bool check_stack_hash (stack_t* stk);
 
+static uint64_t get_stack_hash (stack_t* stk)
+{
+    if (stk)
+        return get_hash(stk, sizeof(stk->data) + sizeof(stk->size) + sizeof(stk->elm_width) +
+                            sizeof(stk->base_capacity) + sizeof(stk->capacity) + sizeof(stk->err));
+
+    else
+        return (uint64_t)-1;
+}
+
 static bool check_stack_hash (stack_t* stk)
 {
-    return stk->stack_hash == get_hash(stk, sizeof(stk->data) + sizeof(stk->size) + sizeof(stk->elm_width) +
-                                            sizeof(stk->base_capacity) + sizeof(stk->capacity) + sizeof(stk->err));
+    if (stk)
+        return stk->stack_hash == get_stack_hash(stk);
+
+    else
+        return false;
 }
 static void save_stack_hash (stack_t* stk)
 {
-    stk->stack_hash = get_hash(stk, sizeof(stk->data) + sizeof(stk->size) + sizeof(stk->elm_width) +
-                                    sizeof(stk->base_capacity) + sizeof(stk->capacity) + sizeof(stk->err));
+    if (stk)
+        stk->stack_hash = get_stack_hash(stk);
 }
 
 #ifndef NO_DATA_HASHING
 static bool check_data_hash (stack_t* stk);
+static uint64_t get_data_hash (stack_t* stk);
 static void save_data_hash (stack_t* stk);
+
+static uint64_t get_data_hash (stack_t* stk)
+{
+    if (stk && stk->data)
+        return get_hash((char*)stk->data IF_DO_CANARY(- CANARY_THICKNESS), stk->capacity IF_DO_CANARY(+ 2*CANARY_THICKNESS));
+
+    else
+        return (uint64_t)-1;
+}
 
 static bool check_data_hash (stack_t* stk)
 {
-    return stk->data_hash == get_hash(stk->data, stk->size * stk->elm_width);
+    if (stk && stk->data)
+        return stk->data_hash == get_data_hash(stk);
+
+    else
+        return false;
 }
 static void save_data_hash (stack_t* stk)
 {
-    stk->data_hash = get_hash(stk->data, stk->size * stk->elm_width);
+    if (stk && stk->data)
+        stk->data_hash = get_data_hash(stk);
 }
 #endif // NO_DATA_HASHING
 #endif // DO_HASH
@@ -58,9 +87,8 @@ static void stack_ifneed_resize (stack_t* stk, Cap_modification mode);
 
 void stack_ctor (stack_t* stk, size_t elm_width, size_t base_capacity)
 {
-    assert(stk);
+    assert(stk && "stack_ctor(nullptr, ...)");
 
-    stack_dtor(stk);
     stk->elm_width     = elm_width;
     stk->base_capacity = base_capacity;
     stk->capacity      = base_capacity;
@@ -71,9 +99,12 @@ void stack_ctor (stack_t* stk, size_t elm_width, size_t base_capacity)
 
     IF_DO_CANARY
     (
-        place_canary(stk->data);
-        stk->data = (char*)stk->data + CANARY_THICKNESS;
-        place_canary((char*)stk->data + base_capacity*elm_width);
+        if (stk->data)
+        {
+            place_canary(stk->data);
+            stk->data = (char*)stk->data + CANARY_THICKNESS;
+            place_canary((char*)stk->data + base_capacity*elm_width);
+        }
     )
 
     HASH_SAVE(stk)
@@ -92,9 +123,13 @@ void stack_dtor (stack_t* stk)
     stk->capacity      = 0;
     stk->elm_width     = 0;
     stk->err           = OK;
-
-    if(!stk->data)
-        return;
+    IF_DO_HASH
+    (
+        stk->stack_hash = 0;
+    #ifndef NO_DATA_HASHING
+        stk->data_hash = 0;
+    #endif // NO_DATA_HASHING
+    )
 
     free((char*)stk->data IF_DO_CANARY(- CANARY_THICKNESS));
     stk->data = nullptr;
@@ -180,7 +215,6 @@ void stack_assert (stack_t* stk, Code_position pos)
 
 void stack_dump(stack_t* stk, Code_position pos)
 {
-    stack_err(stk);
     fprintf(stderr, "STACK_DUMP (called from %s:%d in function %s):\n", pos.file, pos.line, pos.func);
 
     if (!stk)
@@ -197,6 +231,14 @@ void stack_dump(stack_t* stk, Code_position pos)
     fprintf(stderr, "size = %lld\n", stk->size);
     fprintf(stderr, "err code = %d\n", stk->err);
 
+    IF_DO_HASH
+    (
+        fprintf(stderr, "stack_hash = %8llX (real = %8llX)\n", stk->stack_hash, get_stack_hash(stk));
+    #ifndef NO_DATA_HASHING
+        fprintf(stderr, "data_hash = %8llX (real = %8llX)\n", stk->data_hash, get_data_hash(stk));
+    #endif // NO_DATA_HASHING
+    )
+
     if (!stk->data)
     {
         fprintf(stderr, "stk->data = nullptr!!!\n\n");
@@ -204,6 +246,19 @@ void stack_dump(stack_t* stk, Code_position pos)
     }
 
     fprintf(stderr, "data[%p]: \n{\n", stk->data);
+
+    unsigned char byte = 0;
+    IF_DO_CANARY
+    (
+        fprintf(stderr, "can1 = ");
+        for (size_t i = 0; i < CANARY_THICKNESS; i++)
+        {
+            byte = ((unsigned char*)stk->data - CANARY_THICKNESS)[i];
+            fprintf(stderr, "%.1X%.1X ", byte & 0x0f, (byte & 0xf0) >> 4);
+        }
+        fprintf(stderr, "\n");
+    )
+
     if (stk->elm_width && stk->size)
     {
         size_t b = 0;
@@ -215,7 +270,7 @@ void stack_dump(stack_t* stk, Code_position pos)
             fprintf(stderr, "\t[%.*lld] = | ", max_n_width, b / stk->elm_width);
             for (size_t i = 0; i < stk->elm_width; i++, b++)
             {
-                unsigned char byte = ((unsigned char*)stk->data)[b];
+                byte = ((unsigned char*)stk->data)[b];
                 fprintf(stderr, "%.1X%.1X ", byte & 0x0f, (byte & 0xf0) >> 4);
             }
             fprintf(stderr, "|\n");
@@ -225,6 +280,16 @@ void stack_dump(stack_t* stk, Code_position pos)
             fprintf(stderr, "\t... (too many members)\n");
         }
     }
+    IF_DO_CANARY
+    (
+        fprintf(stderr, "can2 = ");
+        for (size_t i = 0; i < CANARY_THICKNESS; i++)
+        {
+            byte = ((unsigned char*)stk->data + stk->capacity*stk->elm_width)[i];
+            fprintf(stderr, "%.1X%.1X ", byte & 0x0f, (byte & 0xf0) >> 4);
+        }
+        fprintf(stderr, "\n");
+    )
 
     fprintf(stderr, "}\n\n");
 }

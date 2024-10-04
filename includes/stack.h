@@ -11,7 +11,7 @@ typedef struct {
 } Code_position;
 #define _POS_ {__FILE__, __LINE__, __func__}
 
-#define NO_DATA_HASHING
+// #define NO_DATA_HASHING
 #ifdef DEBUG
 #define DO_HASH
 #define DO_CANARY

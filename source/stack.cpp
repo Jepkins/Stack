@@ -61,13 +61,14 @@ static void save_stack_hash (stack_t* stk)
 #ifndef NO_DATA_HASHING
 static bool check_data_hash (stack_t* stk);
 static void save_data_hash (stack_t* stk);
+
 static bool check_data_hash (stack_t* stk)
 {
-    return stk->data_hash == get_hash(stk->data, stk->capacity);
+    return stk->data_hash == get_hash(stk->data, stk->size * stk->elm_width);
 }
 static void save_data_hash (stack_t* stk)
 {
-    stk->data_hash = get_hash(stk->data, stk->capacity IF_DO_CANARY(+ 2*CANARY_THICKNESS));
+    stk->data_hash = get_hash(stk->data, stk->size * stk->elm_width);
 }
 #endif // NO_DATA_HASHING
 #endif // DO_HASH
@@ -124,7 +125,7 @@ void stack_dtor (stack_t* stk)
 
     if(!stk->data)
         return;
-        
+
     free((char*)stk->data IF_DO_CANARY(- CANARY_THICKNESS));
     stk->data = nullptr;
 }

@@ -8,6 +8,7 @@ typedef int elm_t;
 
 void set_stderr (const char* file_name);
 
+// !do not push/pop values with byte size not equal to stk->elm_width
 int main()
 {
     set_stderr("err_log.txt");

@@ -78,6 +78,7 @@ static void save_data_hash (stack_t* stk)
 #define HASH_SAVE(stk) IF_DO_HASH(save_stack_hash(stk); save_data_hash(stk);)
 #endif // NO_DATA_HASHING
 
+/// @brief stack_ifneed_resize param
 typedef enum {
     EXPAND = 0,
     SHRINK = 1
@@ -89,6 +90,7 @@ void stack_ctor (stack_t* stk, size_t elm_width, size_t base_capacity)
 {
     assert(stk && "stack_ctor(nullptr, ...)");
 
+    base_capacity = (base_capacity)? base_capacity : 16;
     stk->elm_width     = elm_width;
     stk->base_capacity = base_capacity;
     stk->capacity      = base_capacity;
@@ -113,11 +115,13 @@ void stack_ctor (stack_t* stk, size_t elm_width, size_t base_capacity)
 }
 void stack_ctor (stack_t* stk, size_t elm_width)
 {
-    stack_ctor(stk, elm_width, 2);
+    stack_ctor(stk, elm_width, 0);
 }
 
 void stack_dtor (stack_t* stk)
 {
+    assert(stk && "stack_dtor(nullptr)");
+
     stk->size          = 0;
     stk->base_capacity = 0;
     stk->capacity      = 0;
@@ -179,11 +183,6 @@ stack_err_t stack_err (stack_t* stk)
     {
         stk->err = DATA_NULL;
         return DATA_NULL;
-    }
-    if (!stk->capacity)
-    {
-        stk->err = CAP_NULL;
-        return CAP_NULL;
     }
     if (stk->size > stk->capacity)
     {
@@ -307,8 +306,16 @@ void stack_ifneed_resize (stack_t* stk, Cap_modification mode)
         {
             if (stk->size == stk->capacity)
             {
-                bool do_exp = stk->capacity < EXPONENTIAL_LIMIT;
-                size_t new_cap = ((do_exp)? stk->capacity * CAP_MULTIPLICATOR : stk->capacity + EXPONENTIAL_LIMIT);
+                size_t new_cap = 0;
+                if (stk->capacity == 0)
+                {
+                    new_cap = 16;
+                }
+                else
+                {
+                    bool do_exp = stk->capacity < EXPONENTIAL_LIMIT;
+                    new_cap = ((do_exp)? stk->capacity * CAP_MULTIPLICATOR : stk->capacity + EXPONENTIAL_LIMIT);
+                }
 
                 if (new_cap > MAX_CAP)
                 {

@@ -90,6 +90,8 @@ void stack_ctor (stack_t* stk, size_t elm_width, size_t base_capacity)
 {
     assert(stk && "stack_ctor(nullptr, ...)");
 
+    stack_dtor(stk);
+
     base_capacity = (base_capacity)? base_capacity : 16;
     stk->elm_width     = elm_width;
     stk->base_capacity = base_capacity;
@@ -135,6 +137,9 @@ void stack_dtor (stack_t* stk)
     #endif // NO_DATA_HASHING
     )
 
+    if (!stk->data)
+        return;
+
     free((char*)stk->data IF_DO_CANARY(- CANARY_THICKNESS));
     stk->data = nullptr;
 }
@@ -151,6 +156,16 @@ stack_err_t stack_err (stack_t* stk)
             stk->err = CORRUPT_STACK;
             return CORRUPT_STACK;
         }
+    )
+
+    if (!stk->data)
+    {
+        stk->err = DATA_NULL;
+        return DATA_NULL;
+    }
+
+    IF_DO_HASH
+    (
         #ifndef NO_DATA_HASHING
             if(!check_data_hash(stk))
             {
@@ -178,11 +193,6 @@ stack_err_t stack_err (stack_t* stk)
     {
         stk->err = BASE_CAP_NULL;
         return BASE_CAP_NULL;
-    }
-    if (!stk->data)
-    {
-        stk->err = DATA_NULL;
-        return DATA_NULL;
     }
     if (stk->size > stk->capacity)
     {

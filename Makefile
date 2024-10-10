@@ -31,5 +31,13 @@ $(EXECUTABLE): $(OBJECTS)
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CC) $(CFLAGS) $< -o $@
 
+lib_debug: CFLAGS += -D DEBUG
+lib_debug: $(OBJ_DIR)/stack.o
+	ar rcs $(INC_DIR)/stack_debug.a $<
+
+lib_release: $(OBJ_DIR)/stack.o
+	ar rcs $(INC_DIR)/stack_release.a $<
+
+
 clean:
 	del /f /s *.o *.d

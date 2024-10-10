@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <time.h>
 #include "stack.h"
@@ -19,6 +20,13 @@ class timer_cl
             mark = clock();
             started = true;
         }
+        void time()
+        {
+            if (started)
+            {
+                printf("TIME = %ld\n", clock() - mark);
+            }
+        }
         void end()
         {
             if (started)
@@ -36,31 +44,26 @@ int main()
 
     set_stderr("err_log.txt");
 
-    stack_t stk = {};
-    stack_ctor(&stk, sizeof(elm_t));
+    stack_t* stk = stack_new(sizeof(elm_t));
 
-//     const size_t n_elms = 1e3;
-//     elm_t x = -16;
-//
-//     for (size_t i = 0; i < n_elms; i++, x+=16)
-//     {
-//         if (i == 77)
-//             memset((char*)stk.data + (stk.size-1)*stk.elm_width, 1, 1);
-//
-//         if (i == 100)
-//             memset((char*)stk.data + (stk.capacity-1)*stk.elm_width, 1, stk.elm_width+3);
-//         stack_push(&stk, &x);
-//     }
-//
-//     for (size_t j = 0; j < n_elms - 20; j++)
-//     {
-//         stack_pop(&stk, &x);
-//     }
-//
-//     _STACK_ASSERT_(&stk)
-//     stack_dump(&stk, _POS_);
+    const size_t n_elms = 1e2;
+    elm_t x = -16;
 
-    stack_dtor(&stk);
+    for (size_t i = 0; i < n_elms; i++, x+=16)
+    {
+        stack_push(stk, &x);
+    }
+
+    for (size_t j = 0; j < n_elms - 20; j++)
+    {
+        stack_pop(stk, &x);
+        printf("[%llu] = %lg\n", n_elms - j - 1, x);
+    }
+
+    _STACK_ASSERT_(stk)
+    stack_dump(stk, _POS_);
+
+    stack_delete(stk);
 
     timer.end();
     return 0;

@@ -31,5 +31,9 @@ $(EXECUTABLE): $(OBJECTS)
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CC) $(CFLAGS) $< -o $@
 
+lib: $(OBJ_DIR)/stack.o
+	ar rcs $(INC_DIR)/stack.a $<
+
+
 clean:
 	del /f /s *.o *.d

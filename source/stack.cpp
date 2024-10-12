@@ -440,6 +440,10 @@ void stack_pop (stack_t* stk, void* dst)
 {
     assert(dst && "stack_pop(): dst = nullptr!!!!!\n");
     _STACK_ASSERT_(stk)
+    size_t shift_from_data = (size_t)((char*)dst - (char*)stk->data);
+    size_t shift_from_stk = (size_t)((char*)dst - (char*)stk);
+    assert(shift_from_data > stk->capacity*stk->elm_width && "Trying to pop inside stk->data!!!");
+    assert(shift_from_stk > sizeof(*stk) && "Trying to pop inside *stk!!!");
     if (stk->size == 0)
     {
         stk->err = STACK_UNDERFLOW;

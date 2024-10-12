@@ -425,6 +425,7 @@ static void stack_resize(stack_t* stk, size_t new_cap)
 
 void stack_push (stack_t* stk, const void* value)
 {
+    assert(value && "stack_push(): &value = nullptr!!!!!\n");
     _STACK_ASSERT_(stk)
     stack_ifneed_resize (stk, EXPAND);
     _STACK_ASSERT_(stk)

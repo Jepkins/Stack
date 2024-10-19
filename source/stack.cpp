@@ -273,17 +273,17 @@ void stack_dump(stack_t* stk, code_position_t pos)
 
     fprintf(stderr, "stack_t <stk>[%p]:\n", stk);
 
-    fprintf(stderr, "elements width = %lld\n", stk->elm_width);
-    fprintf(stderr, "base capacity = %lld\n", stk->base_capacity);
-    fprintf(stderr, "capacity = %lld\n", stk->capacity);
-    fprintf(stderr, "size = %lld\n", stk->size);
+    fprintf(stderr, "elements width = %ld\n", stk->elm_width);
+    fprintf(stderr, "base capacity = %ld\n", stk->base_capacity);
+    fprintf(stderr, "capacity = %ld\n", stk->capacity);
+    fprintf(stderr, "size = %ld\n", stk->size);
     fprintf(stderr, "err code = %d\n", stk->err);
 
     IF_DO_HASH
     (
-        fprintf(stderr, "stack_hash = %8llX (real = %8llX)\n", stk->stack_hash, get_stack_hash(stk));
+        fprintf(stderr, "stack_hash = %8lX (real = %8lX)\n", stk->stack_hash, get_stack_hash(stk));
     #ifndef NO_DATA_HASHING
-        fprintf(stderr, "data_hash = %8llX (real = %8llX)\n", stk->data_hash, get_data_hash(stk));
+        fprintf(stderr, "data_hash = %8lX (real = %8lX)\n", stk->data_hash, get_data_hash(stk));
     #endif // NO_DATA_HASHING
     )
 
@@ -315,7 +315,7 @@ void stack_dump(stack_t* stk, code_position_t pos)
 
         while (b < max_b)
         {
-            fprintf(stderr, "\t[%.*lld] = | ", max_n_width, b / stk->elm_width);
+            fprintf(stderr, "\t[%.*ld] = | ", max_n_width, b / stk->elm_width);
             for (size_t i = 0; i < stk->elm_width; i++, b++)
             {
                 byte = ((unsigned char*)stk->data)[b];

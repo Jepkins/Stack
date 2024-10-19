@@ -8,36 +8,40 @@ CFLAGS = -c -Wall -D _DEBUG -ggdb3 -std=c++17 -O0 -Wall -Wextra -Weffc++ -Wc++14
 -Wlarger-than=8192 -Wstack-protector -fPIE -Werror=vla -MP -MMD
 INC_DIR = ./includes
 SRC_DIR = ./source
-OBJ_DIR = ./build
+BUILD_DIR = ./build
 CFLAGS += -I $(INC_DIR)
 LDFLAGS =
 SOURCES = $(addprefix $(SRC_DIR)/, tester_main.cpp stack.cpp protection.cpp)
-OBJECTS = $(addprefix $(OBJ_DIR)/, $(notdir $(SOURCES:.cpp=.o)) )
+OBJECTS = $(addprefix $(BUILD_DIR)/, $(notdir $(SOURCES:.cpp=.o)) )
 DEPS    = $(addsuffix .d, $(basename $(OBJECTS)))
 EXECUTABLE = stk.exe
 
-all: debug
+ifeq ($(d_debug), true)
+CFLAGS += -D DEBUG
+endif
+
+all: $(EXECUTABLE)
+	@echo Successfully remade $<!
 
 -include $(DEPS)
 
-debug: CFLAGS += -D DEBUG
-debug: $(EXECUTABLE)
-
-release: $(EXECUTABLE)
-
 $(EXECUTABLE): $(OBJECTS)
-	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
+	@$(CC) $(LDFLAGS) $(OBJECTS) -o $@
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
-	$(CC) $(CFLAGS) $< -o $@
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
+	@mkdir -p $(@D)
+	@$(CC) $(CFLAGS) $< -o $@
 
-lib_debug: CFLAGS += -D DEBUG
-lib_debug: $(OBJ_DIR)/stack.o
-	ar rcs $(INC_DIR)/stack_debug.a $<
+ifeq ($(d_debug),true)
+lib: $(BUILD_DIR)/stack.o
+	ar rcs $(BUILD_DIR)/stack_debug.a $<
+else
+lib: $(BUILD_DIR)/stack.o
+	ar rcs $(BUILD_DIR)/stack_release.a $<
+endif
 
-lib_release: $(OBJ_DIR)/stack.o
-	ar rcs $(INC_DIR)/stack_release.a $<
-
+open:
+	code $(wildcard */*.cpp) $(wildcard */*.h)
 
 clean:
-	del /f /s *.o *.d
+	rm -rf -d $(BUILD_DIR)

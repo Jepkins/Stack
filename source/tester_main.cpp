@@ -57,7 +57,7 @@ int main()
     for (size_t j = 0; j < n_elms - 20; j++)
     {
         stack_pop(stk, &x);
-        printf("[%llu] = %lg\n", n_elms - j - 1, x);
+        printf("[%lu] = %lg\n", n_elms - j - 1, x);
     }
 
     _STACK_ASSERT_(stk)

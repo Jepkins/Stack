@@ -52,6 +52,7 @@ stack_err_t stack_err (stack_t* stk);
 void stack_dump(stack_t* stk, code_position_t pos = {"unknown", 0, "unknown"});
 void stack_assert (stack_t* stk, code_position_t pos);
 
+size_t stack_curr_size (stack_t* stk);
 void stack_push (stack_t* stk, const void* value);
 void stack_pop (stack_t* stk, void* dst);
 

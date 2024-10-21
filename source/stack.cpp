@@ -454,3 +454,8 @@ void stack_pop (stack_t* stk, void* dst)
 
     stack_ifneed_resize (stk, SHRINK);
 }
+
+size_t stack_curr_size (stack_t* stk)
+{
+    return stk->size;
+}

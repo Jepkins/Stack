@@ -25,7 +25,7 @@ typedef struct {
 #define _DBG(...)
 #define IF_DO_CANARY(...)
 #define IF_DO_HASH(...)
-#define _STACK_ASSERT_(stk)
+#define _STACK_ASSERT_(stk) if (stack_err(stk)) assert(0 && "stack_error");
 #endif
 
 typedef enum {

@@ -3,3 +3,5 @@
 *.exe
 *.d
 err_log.txt
+build/stack_debug.a
+build/stack_release.a
